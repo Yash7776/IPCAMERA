@@ -5,26 +5,29 @@
   </head>
   <body>
     <h2>Live Camera Feed (HLS)</h2>
-    <video id="video1" width="480" controls autoplay muted></video>
-    <video id="video2" width="480" controls autoplay muted></video>
-    <video id="video3" width="480" controls autoplay muted></video>
+    {% for cam in cameras %}
+      <div>
+        <p>{{ cam.location_name }}</p>
+        <video id="video{{ cam.camera_id }}" width="480" controls autoplay muted></video>
+      </div>
+    {% endfor %}
 
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <script>
-      function playStream(videoId, url) {
-        const video = document.getElementById(videoId);
-        if (Hls.isSupported()) {
-          const hls = new Hls();
-          hls.loadSource(url);
-          hls.attachMedia(video);
-        } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
-          video.src = url;
-        }
-      }
+      {% for cam in cameras %}
+        (function() {
+          const video = document.getElementById("video{{ cam.camera_id }}");
+          const url = "/media/stream/cam_{{ cam.camera_id }}.m3u8";
 
-      playStream("video1", "/media/stream/cam1.m3u8");
-      playStream("video2", "/media/stream/cam2.m3u8");
-      playStream("video3", "/media/stream/cam3.m3u8");
+          if (Hls.isSupported()) {
+            const hls = new Hls();
+            hls.loadSource(url);
+            hls.attachMedia(video);
+          } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
+            video.src = url;
+          }
+        })();
+      {% endfor %}
     </script>
   </body>
 </html>

@@ -1,24 +1,23 @@
 import subprocess
 import threading
 
+from cameras.models import Project_ip_camera_details_all
+
 def start_ffmpeg_stream():
-    ffmpeg_path = "C:/ffmpeg-7.1.1-full_build/bin/ffmpeg.exe"  # ✅ Change if needed
+    ffmpeg_path = "C:/ffmpeg-7.1.1-full_build/bin/ffmpeg.exe"
 
-    # 🟢 Add all your camera streams here
-    cameras = {
-        'cam1': 'rtsp://username:password!123@103.167.184.133:554/media/video1',
-        'cam2': 'rtsp://username:password!123@103.167.184.133:554/media/video2',
-        'cam3': 'rtsp://username:password!123@103.167.184.133:554/media/video3',
-    }
+    cameras = Project_ip_camera_details_all.objects.filter(status=1)
 
-    # 🔁 Loop through each camera and start FFmpeg
-    for name, url in cameras.items():
-        output_path = f'D:/Yash/IPCAMERA/media/stream/{name}.m3u8'
+    for camera in cameras:
+        stream_name = f'cam_{camera.camera_id}'
+        rtsp_url = f"rtsp://{camera.user_name}:{camera.password}@{camera.ip_link}"
+        output_path = f'D:/Yash/IPCAMERA/media/stream/{stream_name}.m3u8'
 
-        def run_ffmpeg(rtsp_url=url, out=output_path):
+        def run_ffmpeg(rtsp=rtsp_url, out=output_path):
             cmd = [
                 ffmpeg_path,
-                '-i', rtsp_url,
+                '-rtsp_transport', 'tcp',  # use TCP for stability
+                '-i', rtsp,
                 '-c:v', 'libx264',
                 '-f', 'hls',
                 '-hls_time', '2',
