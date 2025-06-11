@@ -6,9 +6,9 @@ def start_ffmpeg_stream():
 
     # 🟢 Add all your camera streams here
     cameras = {
-        'cam1': 'rtsp://username:password!123@103.167.184.133/media/video1',
-        'cam2': 'rtsp://username:password!123@103.167.184.133/media/video2',
-        'cam3': 'rtsp://username:password!123@103.167.184.133/media/video3',
+        'cam1': 'rtsp://username:password!123@103.167.184.133:554/media/video1',
+        'cam2': 'rtsp://username:password!123@103.167.184.133:554/media/video2',
+        'cam3': 'rtsp://username:password!123@103.167.184.133:554/media/video3',
     }
 
     # 🔁 Loop through each camera and start FFmpeg
