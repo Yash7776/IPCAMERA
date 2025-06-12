@@ -1,4 +1,3 @@
-# models.py
 from django.db import models
 
 class Project_ip_camera_details_all(models.Model):
