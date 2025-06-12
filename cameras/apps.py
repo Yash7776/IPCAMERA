@@ -1,4 +1,3 @@
-# apps.py
 from django.apps import AppConfig
 import sys
 
@@ -10,5 +9,3 @@ class MyAppConfig(AppConfig):
         if 'runserver' in sys.argv:
             from .streaming import start_ffmpeg_stream
             start_ffmpeg_stream()
-
-
