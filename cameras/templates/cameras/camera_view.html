@@ -142,38 +142,71 @@
                 const video = document.getElementById("video{{ cam.camera_id }}");
                 const noFeedBanner = document.getElementById("noFeedBanner{{ cam.camera_id }}");
                 const url = "/media/stream/cam_{{ cam.camera_id }}.m3u8";
+                let hls = null;
+                let isPlaying = false;
 
-                // Function to check if video is playing
-                function checkVideoStatus() {
-                    if (video.readyState >= 3 && !video.paused) { // HAVE_FUTURE_DATA or higher
-                        noFeedBanner.style.display = 'none';
-                    } else {
-                        noFeedBanner.style.display = 'block';
+                // Function to attempt loading the stream
+                function loadStream() {
+                    if (Hls.isSupported()) {
+                        if (hls) {
+                            hls.destroy(); // Clean up previous instance
+                        }
+                        hls = new Hls();
+                        hls.loadSource(url);
+                        hls.attachMedia(video);
+                        hls.on(Hls.Events.MEDIA_ATTACHED, () => {
+                            video.play().catch(() => {
+                                noFeedBanner.style.display = 'block';
+                            });
+                        });
+                        hls.on(Hls.Events.ERROR, (event, data) => {
+                            if (data.fatal) {
+                                noFeedBanner.style.display = 'block';
+                                isPlaying = false;
+                            }
+                        });
+                    } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
+                        video.src = url;
+                        video.play().catch(() => {
+                            noFeedBanner.style.display = 'block';
+                        });
                     }
                 }
 
-                // Initialize HLS.js
-                if (Hls.isSupported()) {
-                    const hls = new Hls();
-                    hls.loadSource(url);
-                    hls.attachMedia(video);
-                    hls.on(Hls.Events.ERROR, function(event, data) {
-                        if (data.fatal) {
-                            noFeedBanner.style.display = 'block';
-                        }
-                    });
-                } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
-                    video.src = url;
+                // Check video status and retry if not playing
+                function checkVideoStatus() {
+                    if (video.readyState >= 3 && !video.paused) {
+                        noFeedBanner.style.display = 'none';
+                        isPlaying = true;
+                    } else {
+                        noFeedBanner.style.display = 'block';
+                        isPlaying = false;
+                        loadStream(); // Retry loading the stream
+                    }
                 }
 
-                // Check video status every second
-                const intervalId = setInterval(checkVideoStatus, 1000);
+                // Initial stream load
+                loadStream();
 
-                // Clean up interval when video starts playing
-                video.addEventListener('playing', function() {
+                // Check video status every 3 seconds
+                setInterval(checkVideoStatus, 3000);
+
+                // Update status on playing
+                video.addEventListener('playing', () => {
                     noFeedBanner.style.display = 'none';
-                    clearInterval(intervalId);
-                }, { once: true });
+                    isPlaying = true;
+                });
+
+                // Handle errors or stalls
+                video.addEventListener('error', () => {
+                    noFeedBanner.style.display = 'block';
+                    isPlaying = false;
+                });
+
+                video.addEventListener('stalled', () => {
+                    noFeedBanner.style.display = 'block';
+                    isPlaying = false;
+                });
             })();
         {% endfor %}
 
@@ -211,7 +244,7 @@
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    window.location.reload();
+                    window.location.reload(); // Still needed for new cameras
                 } else {
                     errorMessage.classList.remove('d-none');
                     errorMessage.innerText = data.error;
