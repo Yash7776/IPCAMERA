@@ -5,6 +5,25 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Camera Monitoring Dashboard</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .no-feed-banner {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 15px;
+            border-radius: 5px;
+            text-align: center;
+            z-index: 10;
+            display: none;
+        }
+        .no-feed-banner img {
+            max-width: 50px;
+            margin-bottom: 10px;
+        }
+    </style>
 </head>
 <body>
     <!-- Header -->
@@ -32,10 +51,14 @@
                 <div class="card h-100">
                     <div class="position-relative">
                         <video id="video{{ cam.camera_id }}" class="card-img-top" width="100%" controls autoplay muted></video>
+                        <div id="noFeedBanner{{ cam.camera_id }}" class="no-feed-banner">
+                            <!-- <img src="https://cdn-icons-png.flaticon.com/512/1146/1146867.png" alt="No Feed Icon"> -->
+                            <div>No Feed Available</div>
+                        </div>
                         <span id="deleteIcon{{ cam.camera_id }}" class="position-absolute top-0 end-0 m-2 btn btn-sm btn-danger d-none" onclick="openDeleteModal('{{ cam.camera_id }}', '{{ cam.location_name }}')">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash3-fill" viewBox="0 0 16 16">
-  <path d="M11 1.5v1h3.5a.5.5 0 0 1 0 1h-.538l-.853 10.66A2 2 0 0 1 11.115 16h-6.23a2 2 0 0 1-1.994-1.84L2.038 3.5H1.5a.5.5 0 0 1 0-1H5v-1A1.5 1.5 0 0 1 6.5 0h3A1.5 1.5 0 0 1 11 1.5m-5 0v1h4v-1a.5.5 0 0 0-.5-.5h-3a.5.5 0 0 0-.5.5M4.5 5.029l.5 8.5a.5.5 0 1 0 .998-.06l-.5-8.5a.5.5 0 1 0-.998.06m6.53-.528a.5.5 0 0 0-.528.47l-.5 8.5a.5.5 0 0 0 .998.058l.5-8.5a.5.5 0 0 0-.47-.528M8 4.5a.5.5 0 0 0-.5.5v8.5a.5.5 0 0 0 1 0V5a.5.5 0 0 0-.5-.5"/>
-</svg>
+                                <path d="M11 1.5v1h3.5a.5.5 0 0 1 0 1h-.538l-.853 10.66A2 2 0 0 1 11.115 16h-6.23a2 2 0 0 1-1.994-1.84L2.038 3.5H1.5a.5.5 0 0 1 0-1H5v-1A1.5 1.5 0 0 1 6.5 0h3A1.5 1.5 0 0 1 11 1.5m-5 0v1h4v-1a.5.5 0 0 0-.5-.5h-3a.5.5 0 0 0-.5.5M4.5 5.029l.5 8.5a.5.5 0 1 0 .998-.06l-.5-8.5a.5.5 0 1 0-.998.06m6.53-.528a.5.5 0 0 0-.528.47l-.5 8.5a.5.5 0 0 0 .998.058l.5-8.5a.5.5 0 0 0-.47-.528M8 4.5a.5.5 0 0 0-.5.5v8.5a.5.5 0 0 0 1 0V5a.5.5 0 0 0-.5-.5"/>
+                            </svg>
                         </span>
                         <span class="position-absolute top-100 start-0 translate-middle m-2 badge {% if cam.status == 1 %}bg-success{% else %}bg-danger{% endif %}">
                             {% if cam.status == 1 %}Online{% else %}Offline{% endif %}
@@ -113,18 +136,44 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.js"></script>
     <script>
-        // HLS.js video streaming
+        // HLS.js video streaming and no-feed banner handling
         {% for cam in cameras %}
             (function() {
                 const video = document.getElementById("video{{ cam.camera_id }}");
+                const noFeedBanner = document.getElementById("noFeedBanner{{ cam.camera_id }}");
                 const url = "/media/stream/cam_{{ cam.camera_id }}.m3u8";
+
+                // Function to check if video is playing
+                function checkVideoStatus() {
+                    if (video.readyState >= 3 && !video.paused) { // HAVE_FUTURE_DATA or higher
+                        noFeedBanner.style.display = 'none';
+                    } else {
+                        noFeedBanner.style.display = 'block';
+                    }
+                }
+
+                // Initialize HLS.js
                 if (Hls.isSupported()) {
                     const hls = new Hls();
                     hls.loadSource(url);
                     hls.attachMedia(video);
+                    hls.on(Hls.Events.ERROR, function(event, data) {
+                        if (data.fatal) {
+                            noFeedBanner.style.display = 'block';
+                        }
+                    });
                 } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
                     video.src = url;
                 }
+
+                // Check video status every second
+                const intervalId = setInterval(checkVideoStatus, 1000);
+
+                // Clean up interval when video starts playing
+                video.addEventListener('playing', function() {
+                    noFeedBanner.style.display = 'none';
+                    clearInterval(intervalId);
+                }, { once: true });
             })();
         {% endfor %}
 
